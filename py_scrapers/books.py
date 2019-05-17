@@ -1,5 +1,6 @@
 """Scrape titles and prices from the Fenwick Books catalogue."""
 from decimal import Decimal, InvalidOperation
+from urllib.parse import urljoin
 
 from .http import fetch
 from .soup import make_soup
@@ -23,5 +24,22 @@ def parse_books(html):
     return books
 
 
-def scrape(url, session=None):
-    return parse_books(fetch(url, session))
+def next_page_url(html, page_url):
+    """Absolute URL of the 'next' link, or None on the last page."""
+    soup = make_soup(html)
+    item = soup.find("li", class_="next")
+    link = item.find("a") if item else None
+    return urljoin(page_url, link["href"]) if link else None
+
+
+def scrape(url, session=None, max_pages=5):
+    books = []
+    for _ in range(max_pages):
+        html = fetch(url, session)
+        for book in parse_books(html):
+            book["url"] = urljoin(url, book["url"])
+            books.append(book)
+        url = next_page_url(html, url)
+        if url is None:
+            break
+    return books
