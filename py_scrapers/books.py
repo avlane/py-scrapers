@@ -2,7 +2,6 @@
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urljoin
 
-from .http import fetch
 from .soup import make_soup
 
 
@@ -32,10 +31,10 @@ def next_page_url(html, page_url):
     return urljoin(page_url, link["href"]) if link else None
 
 
-def scrape(url, session=None, max_pages=5):
+def scrape(url, fetcher, max_pages=5):
     books = []
     for _ in range(max_pages):
-        html = fetch(url, session)
+        html = fetcher.get(url)
         for book in parse_books(html):
             book["url"] = urljoin(url, book["url"])
             books.append(book)
