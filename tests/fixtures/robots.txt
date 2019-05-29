@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /private/
+Disallow: /cgi-bin/
+Crawl-delay: 2
+
+User-agent: badbot
+Disallow: /
