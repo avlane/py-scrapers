@@ -1,8 +1,10 @@
+import csv
+import io
 import os
 import unittest
 from decimal import Decimal
 
-from py_scrapers.books import next_page_url, parse_books, parse_price, scrape
+from py_scrapers.books import next_page_url, parse_books, parse_price, scrape, write_csv
 from py_scrapers.http import Fetcher
 from tests.helpers import FakeResponse, FakeSession
 
@@ -67,6 +69,22 @@ class PaginationTests(unittest.TestCase):
         books = scrape("http://books.example.com/index.html", fetcher, max_pages=1)
         self.assertEqual(len(books), 4)
         self.assertNotIn("http://books.example.com/page-2.html", session.calls)
+
+
+class CsvTests(unittest.TestCase):
+    def test_round_trip(self):
+        books = parse_books(fixture("books_page1.html"))
+        out = io.StringIO()
+        write_csv(books, out)
+        rows = list(csv.DictReader(io.StringIO(out.getvalue())))
+        self.assertEqual(len(rows), 4)
+        self.assertEqual(rows[1]["title"], "Tipping the Velvet")
+        self.assertEqual(rows[1]["price"], "53.74")
+
+    def test_titles_with_commas_are_quoted(self):
+        out = io.StringIO()
+        write_csv([{"title": "Hello, World", "price": Decimal("1.00"), "url": "u"}], out)
+        self.assertIn('"Hello, World"', out.getvalue())
 
 
 if __name__ == "__main__":

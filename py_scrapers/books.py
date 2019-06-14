@@ -1,4 +1,5 @@
 """Scrape titles and prices from the Fenwick Books catalogue."""
+import csv
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urljoin
 
@@ -42,3 +43,10 @@ def scrape(url, fetcher, max_pages=5):
         if url is None:
             break
     return books
+
+
+def write_csv(books, fileobj):
+    writer = csv.writer(fileobj)
+    writer.writerow(["title", "price", "url"])
+    for book in books:
+        writer.writerow([book["title"], book["price"], book["url"]])
