@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from py_scrapers.weather import parse_forecast
+from py_scrapers.weather import forecast_days, parse_forecast, parse_number
 
 with open(os.path.join(os.path.dirname(__file__), "fixtures", "weather.html"), encoding="utf-8") as _f:
     PAGE = _f.read()
@@ -21,6 +21,26 @@ class ForecastTests(unittest.TestCase):
     def test_missing_table(self):
         with self.assertRaises(ValueError):
             parse_forecast("<p>nothing</p>")
+
+
+class NumberTests(unittest.TestCase):
+    def test_numbers(self):
+        self.assertEqual(parse_number("14°C"), 14)
+        self.assertEqual(parse_number("-1°C"), -1)
+        self.assertEqual(parse_number("80%"), 80)
+        self.assertEqual(parse_number("5.8 m"), 5.8)
+
+    def test_missing_values(self):
+        self.assertIsNone(parse_number("—"))
+        self.assertIsNone(parse_number(""))
+
+
+class DaysTests(unittest.TestCase):
+    def test_days(self):
+        days = forecast_days(PAGE)
+        self.assertEqual(days[0].high, 14)
+        self.assertEqual(days[3].rain_chance, None)
+        self.assertEqual(days[4].low, -1)
 
 
 if __name__ == "__main__":
