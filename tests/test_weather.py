@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from py_scrapers.weather import forecast_days, parse_forecast, parse_number
+from py_scrapers.weather import forecast_days, format_days, parse_forecast, parse_number, to_fahrenheit
 
 with open(os.path.join(os.path.dirname(__file__), "fixtures", "weather.html"), encoding="utf-8") as _f:
     PAGE = _f.read()
@@ -41,6 +41,20 @@ class DaysTests(unittest.TestCase):
         self.assertEqual(days[0].high, 14)
         self.assertEqual(days[3].rain_chance, None)
         self.assertEqual(days[4].low, -1)
+
+
+class FormatTests(unittest.TestCase):
+    def test_celsius_table(self):
+        lines = format_days(forecast_days(PAGE)).splitlines()
+        self.assertEqual(len(lines), 6)
+        self.assertTrue(lines[1].startswith("Mon 3 Jun"))
+        self.assertIn("14C", lines[1])
+        self.assertTrue(lines[4].rstrip().endswith("-"))
+
+    def test_fahrenheit(self):
+        self.assertEqual(to_fahrenheit(0), 32)
+        self.assertEqual(to_fahrenheit(None), None)
+        self.assertIn("57F", format_days(forecast_days(PAGE), fahrenheit=True).splitlines()[1])
 
 
 if __name__ == "__main__":

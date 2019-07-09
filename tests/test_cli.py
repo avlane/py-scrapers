@@ -51,5 +51,20 @@ class BooksCommandTests(unittest.TestCase):
             self.assertIn("Wrote 4 books", out.getvalue())
 
 
+class WeatherCommandTests(unittest.TestCase):
+    def test_weather(self):
+        fetcher = fetcher_for({"http://weather.example.com/harlow": FakeResponse(fixture("weather.html"))})
+        out = io.StringIO()
+        code = cli.main(["weather", "http://weather.example.com/harlow"], fetcher, out)
+        self.assertEqual(code, 0)
+        self.assertIn("Sunny intervals", out.getvalue())
+
+    def test_weather_fahrenheit(self):
+        fetcher = fetcher_for({"http://weather.example.com/harlow": FakeResponse(fixture("weather.html"))})
+        out = io.StringIO()
+        cli.main(["weather", "http://weather.example.com/harlow", "--fahrenheit"], fetcher, out)
+        self.assertIn("57F", out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()

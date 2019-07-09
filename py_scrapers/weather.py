@@ -45,3 +45,21 @@ def forecast_days(html, table_id="forecast"):
         days.append(Day(row["day"], row["outlook"], parse_number(row["high"]),
                         parse_number(row["low"]), parse_number(row["rain"])))
     return days
+
+
+def to_fahrenheit(celsius):
+    return None if celsius is None else round(celsius * 9 / 5 + 32)
+
+
+def format_days(days, fahrenheit=False):
+    unit = "F" if fahrenheit else "C"
+    convert = to_fahrenheit if fahrenheit else (lambda value: value)
+    lines = ["{:<10} {:<16} {:>6} {:>6} {:>6}".format("Day", "Outlook", "High", "Low", "Rain")]
+    for day in days:
+        high, low = convert(day.high), convert(day.low)
+        lines.append("{:<10} {:<16} {:>6} {:>6} {:>6}".format(
+            day.day, day.outlook,
+            "-" if high is None else "{}{}".format(high, unit),
+            "-" if low is None else "{}{}".format(low, unit),
+            "-" if day.rain_chance is None else "{}%".format(day.rain_chance)))
+    return "\n".join(lines)

@@ -2,7 +2,7 @@
 import argparse
 import sys
 
-from . import books
+from . import books, weather
 from .http import Fetcher
 
 
@@ -17,6 +17,10 @@ def build_parser():
     p_books.add_argument("url")
     p_books.add_argument("--pages", type=int, default=1, help="how many pages to follow (default 1)")
     p_books.add_argument("--csv", metavar="PATH", help="write the results to a CSV file")
+
+    p_weather = sub.add_parser("weather", help="show a forecast table")
+    p_weather.add_argument("url")
+    p_weather.add_argument("--fahrenheit", action="store_true")
     return parser
 
 
@@ -34,4 +38,7 @@ def main(argv=None, fetcher=None, out=None):
         else:
             for book in found:
                 print("{:>8}  {}".format(str(book["price"]), book["title"]), file=out)
+    elif args.command == "weather":
+        days = weather.forecast_days(fetcher.get(args.url))
+        print(weather.format_days(days, args.fahrenheit), file=out)
     return 0
