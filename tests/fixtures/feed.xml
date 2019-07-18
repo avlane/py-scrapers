@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+<title>Fenwick Gazette</title>
+<link>https://gazette.example.com/</link>
+<description>Local news from Fenwick</description>
+<item>
+<title>Council approves new cycle lane</title>
+<link>https://gazette.example.com/news/cycle-lane</link>
+<pubDate>Tue, 02 Jul 2019 09:30:00 +0000</pubDate>
+<description><![CDATA[The <b>Hill Street</b> cycle lane was approved on Monday night.]]></description>
+</item>
+<item>
+<title>Library extends opening hours</title>
+<link>https://gazette.example.com/news/library-hours</link>
+<pubDate>Fri, 28 Jun 2019 14:05:00 +0100</pubDate>
+<description>Weekday opening now runs until 8pm.</description>
+</item>
+<item>
+<title>Market stalls return to the square</title>
+<link>https://gazette.example.com/news/market</link>
+<pubDate>Wed, 03 Jul 2019 07:00:00 GMT</pubDate>
+<description>Thirty traders signed up for the summer season.</description>
+</item>
+<item>
+<title>Letters page</title>
+<link>https://gazette.example.com/letters</link>
+<description>No date on this one.</description>
+</item>
+</channel>
+</rss>
