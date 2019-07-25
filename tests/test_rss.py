@@ -3,7 +3,7 @@ import unittest
 
 from datetime import datetime, timezone
 
-from py_scrapers.rss import newest_first, parse_rfc822, parse_rss
+from py_scrapers.rss import newest_first, parse_iso8601, parse_rfc822, parse_rss
 
 
 def fixture(name):
@@ -38,6 +38,25 @@ class RssTests(unittest.TestCase):
         titles = [i["title"] for i in newest_first(parse_rss(fixture("feed.xml")))]
         self.assertEqual(titles, ["Market stalls return to the square", "Council approves new cycle lane",
                                   "Library extends opening hours", "Letters page"])
+
+
+class AtomTests(unittest.TestCase):
+    def test_entries(self):
+        items = parse_rss(fixture("atom.xml"))
+        self.assertEqual([i["title"] for i in items], ["Tide tables for July", "Harbour wall repairs"])
+        self.assertEqual(items[0]["link"], "https://notes.example.org/tides-july")
+        self.assertEqual(items[1]["link"], "https://notes.example.org/harbour-wall")
+
+    def test_prefers_published_over_updated(self):
+        items = parse_rss(fixture("atom.xml"))
+        self.assertEqual(items[1]["published"], datetime(2019, 7, 4, 17, 45, tzinfo=timezone.utc))
+
+    def test_content_is_used_when_there_is_no_summary(self):
+        self.assertEqual(parse_rss(fixture("atom.xml"))[1]["summary"], "Repairs begin next week.")
+
+    def test_iso8601_offsets(self):
+        self.assertEqual(parse_iso8601("2019-07-04T18:45:00+01:00"), datetime(2019, 7, 4, 17, 45, tzinfo=timezone.utc))
+        self.assertIsNone(parse_iso8601("yesterday"))
 
 
 if __name__ == "__main__":

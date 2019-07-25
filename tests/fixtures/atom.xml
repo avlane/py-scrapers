@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+<title>Harlow Bay Notes</title>
+<link href="https://notes.example.org/"/>
+<updated>2019-07-05T10:00:00Z</updated>
+<entry>
+<title>Tide tables for July</title>
+<link href="https://notes.example.org/tides-july"/>
+<id>tag:notes.example.org,2019:tides-july</id>
+<updated>2019-07-01T08:15:00Z</updated>
+<summary>Spring tides arrive on the 5th.</summary>
+</entry>
+<entry>
+<title>Harbour wall repairs</title>
+<link rel="alternate" href="https://notes.example.org/harbour-wall"/>
+<id>tag:notes.example.org,2019:harbour-wall</id>
+<published>2019-07-04T17:45:00Z</published>
+<updated>2019-07-05T10:00:00Z</updated>
+<content type="html">Repairs begin next week.</content>
+</entry>
+</feed>
