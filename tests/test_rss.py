@@ -3,7 +3,7 @@ import unittest
 
 from datetime import datetime, timezone
 
-from py_scrapers.rss import newest_first, parse_iso8601, parse_rfc822, parse_rss
+from py_scrapers.rss import newest_first, parse_iso8601, parse_rfc822, parse_rss, since
 
 
 def fixture(name):
@@ -38,6 +38,14 @@ class RssTests(unittest.TestCase):
         titles = [i["title"] for i in newest_first(parse_rss(fixture("feed.xml")))]
         self.assertEqual(titles, ["Market stalls return to the square", "Council approves new cycle lane",
                                   "Library extends opening hours", "Letters page"])
+
+
+class SinceTests(unittest.TestCase):
+    def test_since_drops_older_and_undated_items(self):
+        items = parse_rss(fixture("feed.xml"))
+        recent = since(items, datetime(2019, 7, 1, tzinfo=timezone.utc))
+        self.assertEqual(sorted(i["title"] for i in recent),
+                         ["Council approves new cycle lane", "Market stalls return to the square"])
 
 
 class AtomTests(unittest.TestCase):

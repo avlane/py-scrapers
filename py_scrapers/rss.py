@@ -74,3 +74,8 @@ def newest_first(items):
     """Sort by date, newest first; items without a date go last."""
     oldest = datetime.min.replace(tzinfo=timezone.utc)
     return sorted(items, key=lambda item: item["published"] or oldest, reverse=True)
+
+
+def since(items, cutoff):
+    """Keep items published at or after cutoff. Undated items are dropped."""
+    return [item for item in items if item["published"] and item["published"] >= cutoff]

@@ -2,7 +2,9 @@
 import argparse
 import sys
 
-from . import books, weather
+from datetime import datetime, timezone
+
+from . import books, rss, weather
 from .http import Fetcher
 
 
@@ -21,6 +23,11 @@ def build_parser():
     p_weather = sub.add_parser("weather", help="show a forecast table")
     p_weather.add_argument("url")
     p_weather.add_argument("--fahrenheit", action="store_true")
+
+    p_rss = sub.add_parser("rss", help="list the newest items of an RSS or Atom feed")
+    p_rss.add_argument("url")
+    p_rss.add_argument("--since", metavar="YYYY-MM-DD", help="only items published on or after this date")
+    p_rss.add_argument("--limit", type=int, default=10)
     return parser
 
 
@@ -41,4 +48,12 @@ def main(argv=None, fetcher=None, out=None):
     elif args.command == "weather":
         days = weather.forecast_days(fetcher.get(args.url))
         print(weather.format_days(days, args.fahrenheit), file=out)
+    elif args.command == "rss":
+        items = rss.newest_first(rss.parse_rss(fetcher.get(args.url)))
+        if args.since:
+            cutoff = datetime.strptime(args.since, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            items = rss.since(items, cutoff)
+        for item in items[:args.limit]:
+            when = item["published"].strftime("%Y-%m-%d") if item["published"] else "no date"
+            print("{}  {}\n            {}".format(when, item["title"], item["link"]), file=out)
     return 0

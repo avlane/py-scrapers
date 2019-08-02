@@ -66,5 +66,21 @@ class WeatherCommandTests(unittest.TestCase):
         self.assertIn("57F", out.getvalue())
 
 
+class RssCommandTests(unittest.TestCase):
+    def setUp(self):
+        self.fetcher = fetcher_for({"http://gazette.example.com/rss": FakeResponse(fixture("feed.xml"))})
+
+    def test_lists_newest_first(self):
+        out = io.StringIO()
+        cli.main(["rss", "http://gazette.example.com/rss"], self.fetcher, out)
+        lines = out.getvalue().splitlines()
+        self.assertTrue(lines[0].startswith("2019-07-03  Market stalls"))
+
+    def test_since_and_limit(self):
+        out = io.StringIO()
+        cli.main(["rss", "http://gazette.example.com/rss", "--since", "2019-07-01", "--limit", "1"], self.fetcher, out)
+        self.assertEqual(out.getvalue().count("gazette.example.com/news"), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
