@@ -1,4 +1,5 @@
 import os
+import tempfile
 import unittest
 
 from py_scrapers.http import FetchError, Fetcher, RobotsDisallowed
@@ -53,6 +54,38 @@ class FetcherTests(unittest.TestCase):
         with self.assertRaises(FetchError) as caught:
             fetcher.get("http://x/missing")
         self.assertEqual(caught.exception.status, 404)
+
+
+class CacheTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.now = [1000.0]
+
+    def make(self, session, **kwargs):
+        return Fetcher(session, delay=0, respect_robots=False, cache_dir=self.tmp.name,
+                       now=lambda: self.now[0], **kwargs)
+
+    def test_second_get_comes_from_the_cache(self):
+        session = FakeSession({"http://x/a": [FakeResponse("first"), FakeResponse("second")]})
+        fetcher = self.make(session)
+        self.assertEqual(fetcher.get("http://x/a"), "first")
+        self.assertEqual(fetcher.get("http://x/a"), "first")
+        self.assertEqual(len(session.calls), 1)
+
+    def test_stale_cache_is_refetched(self):
+        session = FakeSession({"http://x/a": [FakeResponse("first"), FakeResponse("second")]})
+        fetcher = self.make(session, cache_max_age=60)
+        fetcher.get("http://x/a")
+        self.now[0] = os.path.getmtime(fetcher._cache_path("http://x/a")) + 61
+        self.assertEqual(fetcher.get("http://x/a"), "second")
+
+    def test_errors_are_not_cached(self):
+        session = FakeSession({"http://x/a": [FakeResponse("", 500), FakeResponse("ok")]})
+        fetcher = self.make(session)
+        with self.assertRaises(FetchError):
+            fetcher.get("http://x/a")
+        self.assertEqual(fetcher.get("http://x/a"), "ok")
 
 
 with open(os.path.join(os.path.dirname(__file__), "fixtures", "robots.txt")) as _f:

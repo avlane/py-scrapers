@@ -1,4 +1,6 @@
 """Fetching pages politely."""
+import hashlib
+import os
 import time
 from urllib.parse import urlsplit
 from urllib.robotparser import RobotFileParser
@@ -32,7 +34,7 @@ class Fetcher:
     """Fetch pages one at a time, waiting at least `delay` seconds between requests."""
 
     def __init__(self, session=None, delay=1.0, timeout=10, sleep=time.sleep, clock=time.monotonic,
-                 respect_robots=True):
+                 respect_robots=True, cache_dir=None, cache_max_age=3600, now=time.time):
         self._session = session
         self.delay = delay
         self.timeout = timeout
@@ -41,6 +43,30 @@ class Fetcher:
         self._last_request = None
         self.respect_robots = respect_robots
         self._robots = {}
+        self.cache_dir = cache_dir
+        self.cache_max_age = cache_max_age
+        self.now = now
+
+    def _cache_path(self, url):
+        return os.path.join(self.cache_dir, hashlib.sha1(url.encode("utf-8")).hexdigest() + ".html")
+
+    def _read_cache(self, url):
+        if not self.cache_dir:
+            return None
+        path = self._cache_path(url)
+        try:
+            if self.now() - os.path.getmtime(path) > self.cache_max_age:
+                return None
+            with open(path, encoding="utf-8") as f:
+                return f.read()
+        except OSError:
+            return None
+
+    def _write_cache(self, url, text):
+        if self.cache_dir:
+            os.makedirs(self.cache_dir, exist_ok=True)
+            with open(self._cache_path(url), "w", encoding="utf-8") as f:
+                f.write(text)
 
     @property
     def session(self):
@@ -76,6 +102,9 @@ class Fetcher:
         return self._robots_for(url).can_fetch(USER_AGENT, url)
 
     def get(self, url):
+        cached = self._read_cache(url)
+        if cached is not None:
+            return cached
         if not self.allowed(url):
             raise RobotsDisallowed(url)
         self._wait()
@@ -83,4 +112,5 @@ class Fetcher:
         self._last_request = self.clock()
         if response.status_code >= 400:
             raise FetchError(url, response.status_code)
+        self._write_cache(url, response.text)
         return response.text

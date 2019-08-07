@@ -12,6 +12,7 @@ def build_parser():
     parser = argparse.ArgumentParser(prog="py_scrapers", description="Small polite scrapers.")
     parser.add_argument("--delay", type=float, default=1.0, help="seconds to wait between requests (default 1)")
     parser.add_argument("--ignore-robots", action="store_true", help="do not read robots.txt (be careful)")
+    parser.add_argument("--cache-dir", metavar="DIR", help="keep fetched pages here for an hour (handy while developing a parser)")
     sub = parser.add_subparsers(dest="command")
     sub.required = True
 
@@ -34,7 +35,8 @@ def build_parser():
 def main(argv=None, fetcher=None, out=None):
     out = out or sys.stdout
     args = build_parser().parse_args(argv)
-    fetcher = fetcher or Fetcher(delay=args.delay, respect_robots=not args.ignore_robots)
+    fetcher = fetcher or Fetcher(delay=args.delay, respect_robots=not args.ignore_robots,
+                          cache_dir=args.cache_dir)
 
     if args.command == "books":
         found = books.scrape(args.url, fetcher, max_pages=args.pages)
