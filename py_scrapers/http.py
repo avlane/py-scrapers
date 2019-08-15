@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 from urllib.robotparser import RobotFileParser
 
 USER_AGENT = "py-scrapers/0.1 (learning project)"
+RETRY_STATUSES = (429, 500, 502, 503, 504)
 
 
 class FetchError(Exception):
@@ -34,7 +35,8 @@ class Fetcher:
     """Fetch pages one at a time, waiting at least `delay` seconds between requests."""
 
     def __init__(self, session=None, delay=1.0, timeout=10, sleep=time.sleep, clock=time.monotonic,
-                 respect_robots=True, cache_dir=None, cache_max_age=3600, now=time.time):
+                 respect_robots=True, cache_dir=None, cache_max_age=3600, now=time.time,
+                 max_retries=3, backoff=2.0):
         self._session = session
         self.delay = delay
         self.timeout = timeout
@@ -46,6 +48,8 @@ class Fetcher:
         self.cache_dir = cache_dir
         self.cache_max_age = cache_max_age
         self.now = now
+        self.max_retries = max_retries
+        self.backoff = backoff
 
     def _cache_path(self, url):
         return os.path.join(self.cache_dir, hashlib.sha1(url.encode("utf-8")).hexdigest() + ".html")
@@ -107,10 +111,19 @@ class Fetcher:
             return cached
         if not self.allowed(url):
             raise RobotsDisallowed(url)
-        self._wait()
-        response = self.session.get(url, timeout=self.timeout)
-        self._last_request = self.clock()
-        if response.status_code >= 400:
-            raise FetchError(url, response.status_code)
+        response = self._get_with_retries(url)
         self._write_cache(url, response.text)
         return response.text
+
+    def _get_with_retries(self, url):
+        attempt = 0
+        while True:
+            self._wait()
+            response = self.session.get(url, timeout=self.timeout)
+            self._last_request = self.clock()
+            if response.status_code < 400:
+                return response
+            if response.status_code not in RETRY_STATUSES or attempt >= self.max_retries:
+                raise FetchError(url, response.status_code)
+            self.sleep(self.backoff * (2 ** attempt))
+            attempt += 1

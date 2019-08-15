@@ -56,6 +56,39 @@ class FetcherTests(unittest.TestCase):
         self.assertEqual(caught.exception.status, 404)
 
 
+class RetryTests(unittest.TestCase):
+    def make(self, responses, **kwargs):
+        clock = Clock()
+        session = FakeSession(responses)
+        fetcher = Fetcher(session, delay=0, respect_robots=False, sleep=clock.sleep, clock=clock.time, **kwargs)
+        return fetcher, session, clock
+
+    def test_retries_server_errors_with_exponential_backoff(self):
+        fetcher, session, clock = self.make({"http://x/a": [FakeResponse("", 503), FakeResponse("", 502),
+                                                            FakeResponse("done")]})
+        self.assertEqual(fetcher.get("http://x/a"), "done")
+        self.assertEqual(len(session.calls), 3)
+        self.assertEqual(clock.sleeps, [2.0, 4.0])
+
+    def test_gives_up_after_max_retries(self):
+        fetcher, session, _ = self.make({"http://x/a": [FakeResponse("", 500)] * 3}, max_retries=2)
+        with self.assertRaises(FetchError) as caught:
+            fetcher.get("http://x/a")
+        self.assertEqual(caught.exception.status, 500)
+        self.assertEqual(len(session.calls), 3)
+
+    def test_client_errors_are_not_retried(self):
+        fetcher, session, _ = self.make({"http://x/a": [FakeResponse("", 404)]})
+        with self.assertRaises(FetchError):
+            fetcher.get("http://x/a")
+        self.assertEqual(len(session.calls), 1)
+
+    def test_rate_limit_is_retried(self):
+        fetcher, _, clock = self.make({"http://x/a": [FakeResponse("", 429), FakeResponse("ok")]})
+        self.assertEqual(fetcher.get("http://x/a"), "ok")
+        self.assertEqual(clock.sleeps, [2.0])
+
+
 class CacheTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -64,7 +97,7 @@ class CacheTests(unittest.TestCase):
 
     def make(self, session, **kwargs):
         return Fetcher(session, delay=0, respect_robots=False, cache_dir=self.tmp.name,
-                       now=lambda: self.now[0], **kwargs)
+                       now=lambda: self.now[0], sleep=lambda s: None, **kwargs)
 
     def test_second_get_comes_from_the_cache(self):
         session = FakeSession({"http://x/a": [FakeResponse("first"), FakeResponse("second")]})
@@ -81,7 +114,7 @@ class CacheTests(unittest.TestCase):
         self.assertEqual(fetcher.get("http://x/a"), "second")
 
     def test_errors_are_not_cached(self):
-        session = FakeSession({"http://x/a": [FakeResponse("", 500), FakeResponse("ok")]})
+        session = FakeSession({"http://x/a": [FakeResponse("", 404), FakeResponse("ok")]})
         fetcher = self.make(session)
         with self.assertRaises(FetchError):
             fetcher.get("http://x/a")
