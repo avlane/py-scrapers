@@ -2,6 +2,7 @@
 import hashlib
 import os
 import time
+from email.utils import parsedate_to_datetime
 from urllib.parse import urlsplit
 from urllib.robotparser import RobotFileParser
 
@@ -14,6 +15,22 @@ class FetchError(Exception):
         super().__init__("{} returned HTTP {}".format(url, status))
         self.url = url
         self.status = status
+
+
+def retry_after_seconds(headers, now):
+    """Seconds asked for by a Retry-After header (a number or an HTTP date), or None."""
+    value = None
+    for key, found in (headers or {}).items():
+        if key.lower() == "retry-after":
+            value = str(found).strip()
+    if not value:
+        return None
+    if value.isdigit():
+        return float(value)
+    try:
+        return max(0.0, parsedate_to_datetime(value).timestamp() - now)
+    except (TypeError, ValueError):
+        return None
 
 
 class RobotsDisallowed(FetchError):
@@ -36,7 +53,7 @@ class Fetcher:
 
     def __init__(self, session=None, delay=1.0, timeout=10, sleep=time.sleep, clock=time.monotonic,
                  respect_robots=True, cache_dir=None, cache_max_age=3600, now=time.time,
-                 max_retries=3, backoff=2.0):
+                 max_retries=3, backoff=2.0, max_wait=120):
         self._session = session
         self.delay = delay
         self.timeout = timeout
@@ -50,6 +67,7 @@ class Fetcher:
         self.now = now
         self.max_retries = max_retries
         self.backoff = backoff
+        self.max_wait = max_wait
 
     def _cache_path(self, url):
         return os.path.join(self.cache_dir, hashlib.sha1(url.encode("utf-8")).hexdigest() + ".html")
@@ -125,5 +143,9 @@ class Fetcher:
                 return response
             if response.status_code not in RETRY_STATUSES or attempt >= self.max_retries:
                 raise FetchError(url, response.status_code)
-            self.sleep(self.backoff * (2 ** attempt))
+            wait = self.backoff * (2 ** attempt)
+            asked = retry_after_seconds(response.headers, self.now())
+            if asked is not None:
+                wait = max(wait, min(asked, self.max_wait))
+            self.sleep(wait)
             attempt += 1

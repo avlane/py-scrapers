@@ -2,7 +2,7 @@ import os
 import tempfile
 import unittest
 
-from py_scrapers.http import FetchError, Fetcher, RobotsDisallowed
+from py_scrapers.http import FetchError, Fetcher, RobotsDisallowed, retry_after_seconds
 from tests.helpers import FakeResponse, FakeSession
 
 
@@ -87,6 +87,37 @@ class RetryTests(unittest.TestCase):
         fetcher, _, clock = self.make({"http://x/a": [FakeResponse("", 429), FakeResponse("ok")]})
         self.assertEqual(fetcher.get("http://x/a"), "ok")
         self.assertEqual(clock.sleeps, [2.0])
+
+
+class RetryAfterTests(unittest.TestCase):
+    def test_seconds(self):
+        self.assertEqual(retry_after_seconds({"Retry-After": "30"}, 0), 30.0)
+
+    def test_header_name_is_case_insensitive(self):
+        self.assertEqual(retry_after_seconds({"retry-after": "5"}, 0), 5.0)
+
+    def test_http_date(self):
+        # 2019-08-15 12:00:30 GMT is 30 seconds after the fake "now"
+        now = 1565870400.0
+        self.assertEqual(retry_after_seconds({"Retry-After": "Thu, 15 Aug 2019 12:00:30 GMT"}, now), 30.0)
+
+    def test_missing_or_bad(self):
+        self.assertIsNone(retry_after_seconds({}, 0))
+        self.assertIsNone(retry_after_seconds({"Retry-After": "soon"}, 0))
+
+    def test_fetcher_waits_at_least_as_long_as_asked(self):
+        clock = Clock()
+        session = FakeSession({"http://x/a": [FakeResponse("", 429, {"Retry-After": "10"}), FakeResponse("ok")]})
+        fetcher = Fetcher(session, delay=0, respect_robots=False, sleep=clock.sleep, clock=clock.time)
+        self.assertEqual(fetcher.get("http://x/a"), "ok")
+        self.assertEqual(clock.sleeps, [10.0])
+
+    def test_absurd_waits_are_capped(self):
+        clock = Clock()
+        session = FakeSession({"http://x/a": [FakeResponse("", 503, {"Retry-After": "86400"}), FakeResponse("ok")]})
+        fetcher = Fetcher(session, delay=0, respect_robots=False, sleep=clock.sleep, clock=clock.time, max_wait=90)
+        fetcher.get("http://x/a")
+        self.assertEqual(clock.sleeps, [90])
 
 
 class CacheTests(unittest.TestCase):
