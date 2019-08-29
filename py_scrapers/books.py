@@ -9,7 +9,7 @@ from .soup import make_soup
 def parse_price(text):
     """'£51.77' -> Decimal('51.77')"""
     try:
-        return Decimal(text.strip().lstrip("£$€"))
+        return Decimal(text.strip().lstrip("£$€").replace(",", ""))
     except InvalidOperation:
         raise ValueError("cannot read a price from {!r}".format(text))
 

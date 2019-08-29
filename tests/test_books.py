@@ -24,6 +24,9 @@ class ParsePriceTests(unittest.TestCase):
         self.assertEqual(parse_price(" $9.99 "), Decimal("9.99"))
         self.assertEqual(parse_price("€10"), Decimal("10"))
 
+    def test_thousands_separator(self):
+        self.assertEqual(parse_price("£1,051.77"), Decimal("1051.77"))
+
     def test_garbage(self):
         with self.assertRaises(ValueError):
             parse_price("free!")
@@ -36,6 +39,10 @@ class ParseBooksTests(unittest.TestCase):
         self.assertEqual(books[0]["title"], "A Light in the Attic")
         self.assertEqual(books[0]["price"], Decimal("51.77"))
         self.assertEqual(books[3]["url"], "catalogue/sharp-objects_997/index.html")
+
+    def test_expensive_book_on_page_two(self):
+        books = parse_books(fixture("books_page2.html"))
+        self.assertEqual(books[1]["price"], Decimal("1051.77"))
 
     def test_full_title_comes_from_the_title_attribute(self):
         books = parse_books(fixture("books_page2.html"))
