@@ -4,7 +4,7 @@ import os
 import unittest
 from decimal import Decimal
 
-from py_scrapers.books import next_page_url, parse_books, parse_price, scrape, write_csv
+from py_scrapers.books import Book, next_page_url, parse_books, parse_price, scrape, write_csv
 from py_scrapers.http import Fetcher
 from tests.helpers import FakeResponse, FakeSession
 
@@ -36,17 +36,17 @@ class ParseBooksTests(unittest.TestCase):
     def test_first_page(self):
         books = parse_books(fixture("books_page1.html"))
         self.assertEqual(len(books), 4)
-        self.assertEqual(books[0]["title"], "A Light in the Attic")
-        self.assertEqual(books[0]["price"], Decimal("51.77"))
-        self.assertEqual(books[3]["url"], "catalogue/sharp-objects_997/index.html")
+        self.assertEqual(books[0].title, "A Light in the Attic")
+        self.assertEqual(books[0].price, Decimal("51.77"))
+        self.assertEqual(books[3].url, "catalogue/sharp-objects_997/index.html")
 
     def test_expensive_book_on_page_two(self):
         books = parse_books(fixture("books_page2.html"))
-        self.assertEqual(books[1]["price"], Decimal("1051.77"))
+        self.assertEqual(books[1].price, Decimal("1051.77"))
 
     def test_full_title_comes_from_the_title_attribute(self):
         books = parse_books(fixture("books_page2.html"))
-        self.assertEqual(books[0]["title"], "Sapiens: A Brief History of Humankind")
+        self.assertEqual(books[0].title, "Sapiens: A Brief History of Humankind")
 
 
 class PaginationTests(unittest.TestCase):
@@ -69,7 +69,7 @@ class PaginationTests(unittest.TestCase):
         fetcher, session = self.make_fetcher()
         books = scrape("http://books.example.com/index.html", fetcher)
         self.assertEqual(len(books), 7)
-        self.assertEqual(books[0]["url"], "http://books.example.com/catalogue/a-light-in-the-attic_1000/index.html")
+        self.assertEqual(books[0].url, "http://books.example.com/catalogue/a-light-in-the-attic_1000/index.html")
 
     def test_page_limit(self):
         fetcher, session = self.make_fetcher()
@@ -90,7 +90,7 @@ class CsvTests(unittest.TestCase):
 
     def test_titles_with_commas_are_quoted(self):
         out = io.StringIO()
-        write_csv([{"title": "Hello, World", "price": Decimal("1.00"), "url": "u"}], out)
+        write_csv([Book("Hello, World", "u", Decimal("1.00"))], out)
         self.assertIn('"Hello, World"', out.getvalue())
 
 

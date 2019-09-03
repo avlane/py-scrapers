@@ -46,7 +46,7 @@ def main(argv=None, fetcher=None, out=None):
             print("Wrote {} books to {}".format(len(found), args.csv), file=out)
         else:
             for book in found:
-                print("{:>8}  {}".format(str(book["price"]), book["title"]), file=out)
+                print("{:>8}  {}".format(str(book.price), book.title), file=out)
     elif args.command == "weather":
         days = weather.forecast_days(fetcher.get(args.url))
         print(weather.format_days(days, args.fahrenheit), file=out)

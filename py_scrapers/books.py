@@ -1,9 +1,13 @@
 """Scrape titles and prices from the Fenwick Books catalogue."""
 import csv
+from collections import namedtuple
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urljoin
 
 from .soup import make_soup
+
+
+Book = namedtuple("Book", "title url price")
 
 
 def parse_price(text):
@@ -20,7 +24,7 @@ def parse_books(html):
     for article in soup.find_all("article", class_="product_pod"):
         link = article.find("h3").find("a")
         price = article.find("p", class_="price_color").get_text(strip=True)
-        books.append({"title": link["title"], "url": link["href"], "price": parse_price(price)})
+        books.append(Book(link["title"], link["href"], parse_price(price)))
     return books
 
 
@@ -37,8 +41,7 @@ def scrape(url, fetcher, max_pages=5):
     for _ in range(max_pages):
         html = fetcher.get(url)
         for book in parse_books(html):
-            book["url"] = urljoin(url, book["url"])
-            books.append(book)
+            books.append(book._replace(url=urljoin(url, book.url)))
         url = next_page_url(html, url)
         if url is None:
             break
@@ -49,4 +52,4 @@ def write_csv(books, fileobj):
     writer = csv.writer(fileobj)
     writer.writerow(["title", "price", "url"])
     for book in books:
-        writer.writerow([book["title"], book["price"], book["url"]])
+        writer.writerow([book.title, book.price, book.url])
