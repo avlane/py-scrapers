@@ -40,6 +40,11 @@ class ParseBooksTests(unittest.TestCase):
         self.assertEqual(books[0].price, Decimal("51.77"))
         self.assertEqual(books[3].url, "catalogue/sharp-objects_997/index.html")
 
+    def test_rating_and_stock(self):
+        books = parse_books(fixture("books_page1.html"))
+        self.assertEqual([b.rating for b in books], [3, 1, 1, 4])
+        self.assertEqual([b.in_stock for b in books], [True, True, False, True])
+
     def test_expensive_book_on_page_two(self):
         books = parse_books(fixture("books_page2.html"))
         self.assertEqual(books[1].price, Decimal("1051.77"))
@@ -87,10 +92,12 @@ class CsvTests(unittest.TestCase):
         self.assertEqual(len(rows), 4)
         self.assertEqual(rows[1]["title"], "Tipping the Velvet")
         self.assertEqual(rows[1]["price"], "53.74")
+        self.assertEqual(rows[2]["in_stock"], "no")
+        self.assertEqual(rows[3]["rating"], "4")
 
     def test_titles_with_commas_are_quoted(self):
         out = io.StringIO()
-        write_csv([Book("Hello, World", "u", Decimal("1.00"))], out)
+        write_csv([Book("Hello, World", "u", Decimal("1.00"), 3, True)], out)
         self.assertIn('"Hello, World"', out.getvalue())
 
 

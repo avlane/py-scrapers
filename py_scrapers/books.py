@@ -7,7 +7,8 @@ from urllib.parse import urljoin
 from .soup import make_soup
 
 
-Book = namedtuple("Book", "title url price")
+Book = namedtuple("Book", "title url price rating in_stock")
+RATINGS = {"One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
 
 
 def parse_price(text):
@@ -24,7 +25,12 @@ def parse_books(html):
     for article in soup.find_all("article", class_="product_pod"):
         link = article.find("h3").find("a")
         price = article.find("p", class_="price_color").get_text(strip=True)
-        books.append(Book(link["title"], link["href"], parse_price(price)))
+        rating = 0
+        for name in article.find("p", class_="star-rating")["class"]:
+            rating = RATINGS.get(name, rating)
+        availability = article.find("p", class_="availability").get_text(strip=True).lower()
+        books.append(Book(link["title"], link["href"], parse_price(price), rating,
+                          availability.startswith("in stock")))
     return books
 
 
@@ -50,6 +56,6 @@ def scrape(url, fetcher, max_pages=5):
 
 def write_csv(books, fileobj):
     writer = csv.writer(fileobj)
-    writer.writerow(["title", "price", "url"])
+    writer.writerow(["title", "price", "rating", "in_stock", "url"])
     for book in books:
-        writer.writerow([book.title, book.price, book.url])
+        writer.writerow([book.title, book.price, book.rating, "yes" if book.in_stock else "no", book.url])
