@@ -4,7 +4,7 @@ import os
 import unittest
 from decimal import Decimal
 
-from py_scrapers.books import Book, next_page_url, parse_books, parse_price, scrape, write_csv
+from py_scrapers.books import Book, compare_prices, next_page_url, parse_books, parse_price, read_csv, scrape, write_csv
 from py_scrapers.http import Fetcher
 from tests.helpers import FakeResponse, FakeSession
 
@@ -99,6 +99,22 @@ class CsvTests(unittest.TestCase):
         out = io.StringIO()
         write_csv([Book("Hello, World", "u", Decimal("1.00"), 3, True)], out)
         self.assertIn('"Hello, World"', out.getvalue())
+
+
+class CompareTests(unittest.TestCase):
+    def test_read_csv_round_trip(self):
+        out = io.StringIO()
+        write_csv(parse_books(fixture("books_page1.html")), out)
+        prices = read_csv(io.StringIO(out.getvalue()))
+        self.assertEqual(prices["Soumission"], Decimal("50.10"))
+
+    def test_compare(self):
+        old = {"A": Decimal("10"), "B": Decimal("5"), "C": Decimal("1")}
+        new = {"A": Decimal("9"), "B": Decimal("5"), "D": Decimal("2")}
+        changed, added, removed = compare_prices(old, new)
+        self.assertEqual(changed, [("A", Decimal("10"), Decimal("9"))])
+        self.assertEqual(added, ["D"])
+        self.assertEqual(removed, ["C"])
 
 
 if __name__ == "__main__":

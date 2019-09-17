@@ -29,6 +29,10 @@ def build_parser():
     p_rss.add_argument("url")
     p_rss.add_argument("--since", metavar="YYYY-MM-DD", help="only items published on or after this date")
     p_rss.add_argument("--limit", type=int, default=10)
+
+    p_diff = sub.add_parser("price-changes", help="compare two CSV files written by the books command")
+    p_diff.add_argument("old_csv")
+    p_diff.add_argument("new_csv")
     return parser
 
 
@@ -58,4 +62,18 @@ def main(argv=None, fetcher=None, out=None):
         for item in items[:args.limit]:
             when = item["published"].strftime("%Y-%m-%d") if item["published"] else "no date"
             print("{}  {}\n            {}".format(when, item["title"], item["link"]), file=out)
+    elif args.command == "price-changes":
+        with open(args.old_csv, newline="", encoding="utf-8") as f:
+            old = books.read_csv(f)
+        with open(args.new_csv, newline="", encoding="utf-8") as f:
+            new = books.read_csv(f)
+        changed, added, removed = books.compare_prices(old, new)
+        for title, before, after in changed:
+            print("{}: {} -> {} ({})".format(title, before, after, "down" if after < before else "up"), file=out)
+        for title in added:
+            print("new: {}".format(title), file=out)
+        for title in removed:
+            print("gone: {}".format(title), file=out)
+        if not (changed or added or removed):
+            print("No changes.", file=out)
     return 0

@@ -59,3 +59,16 @@ def write_csv(books, fileobj):
     writer.writerow(["title", "price", "rating", "in_stock", "url"])
     for book in books:
         writer.writerow([book.title, book.price, book.rating, "yes" if book.in_stock else "no", book.url])
+
+
+def read_csv(fileobj):
+    """Read a file written by write_csv back into a {title: Decimal price} dict."""
+    return {row["title"]: Decimal(row["price"]) for row in csv.DictReader(fileobj)}
+
+
+def compare_prices(old, new):
+    """Compare two {title: price} dicts. Returns (changed, added, removed)."""
+    changed = [(title, old[title], new[title]) for title in sorted(old) if title in new and old[title] != new[title]]
+    added = sorted(set(new) - set(old))
+    removed = sorted(set(old) - set(new))
+    return changed, added, removed

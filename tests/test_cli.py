@@ -82,5 +82,19 @@ class RssCommandTests(unittest.TestCase):
         self.assertEqual(out.getvalue().count("gazette.example.com/news"), 1)
 
 
+class PriceChangesTests(unittest.TestCase):
+    def test_reports_changes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            old, new = os.path.join(tmp, "old.csv"), os.path.join(tmp, "new.csv")
+            header = "title,price,rating,in_stock,url\n"
+            with open(old, "w") as f:
+                f.write(header + "A,10.00,3,yes,u\nB,5.00,3,yes,u\n")
+            with open(new, "w") as f:
+                f.write(header + "A,8.50,3,yes,u\nC,2.00,3,yes,u\n")
+            out = io.StringIO()
+            cli.main(["price-changes", old, new], out=out)
+        self.assertEqual(out.getvalue().splitlines(), ["A: 10.00 -> 8.50 (down)", "new: C", "gone: B"])
+
+
 if __name__ == "__main__":
     unittest.main()
