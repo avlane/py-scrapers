@@ -2,7 +2,7 @@ import os
 import tempfile
 import unittest
 
-from py_scrapers.http import FetchError, Fetcher, RobotsDisallowed, retry_after_seconds
+from py_scrapers.http import FetchError, Fetcher, RobotsDisallowed, response_text, retry_after_seconds
 from tests.helpers import FakeResponse, FakeSession
 
 
@@ -87,6 +87,28 @@ class RetryTests(unittest.TestCase):
         fetcher, _, clock = self.make({"http://x/a": [FakeResponse("", 429), FakeResponse("ok")]})
         self.assertEqual(fetcher.get("http://x/a"), "ok")
         self.assertEqual(clock.sleeps, [2.0])
+
+
+class EncodingTests(unittest.TestCase):
+    def latin1_guess(self, body, headers):
+        """A response like requests builds when the server declares no charset."""
+        response = FakeResponse("", headers=headers)
+        response.content = body
+        response.text = body.decode("iso-8859-1")
+        return response
+
+    def test_utf8_is_assumed_without_a_charset(self):
+        response = self.latin1_guess("£51.77".encode("utf-8"), {"Content-Type": "text/html"})
+        self.assertEqual(response_text(response), "£51.77")
+
+    def test_declared_charset_is_left_to_requests(self):
+        response = self.latin1_guess("£51.77".encode("iso-8859-1"), {"Content-Type": "text/html; charset=iso-8859-1"})
+        self.assertEqual(response_text(response), "£51.77")
+
+    def test_fetcher_uses_it(self):
+        response = self.latin1_guess("£1".encode("utf-8"), {})
+        fetcher = Fetcher(FakeSession({"http://x/a": response}), delay=0, respect_robots=False)
+        self.assertEqual(fetcher.get("http://x/a"), "£1")
 
 
 class RetryAfterTests(unittest.TestCase):

@@ -17,6 +17,19 @@ class FetchError(Exception):
         self.status = status
 
 
+def response_text(response):
+    """Decode a response body.
+
+    requests assumes ISO-8859-1 for text/* when the server sends no charset, which turns
+    £ into Â£. Pages without a declared charset are decoded as UTF-8 instead.
+    """
+    content_type = str((getattr(response, "headers", None) or {}).get("Content-Type", "")).lower()
+    content = getattr(response, "content", None)
+    if content is not None and "charset" not in content_type:
+        return content.decode("utf-8", errors="replace")
+    return response.text
+
+
 def retry_after_seconds(headers, now):
     """Seconds asked for by a Retry-After header (a number or an HTTP date), or None."""
     value = None
@@ -129,9 +142,9 @@ class Fetcher:
             return cached
         if not self.allowed(url):
             raise RobotsDisallowed(url)
-        response = self._get_with_retries(url)
-        self._write_cache(url, response.text)
-        return response.text
+        text = response_text(self._get_with_retries(url))
+        self._write_cache(url, text)
+        return text
 
     def _get_with_retries(self, url):
         attempt = 0

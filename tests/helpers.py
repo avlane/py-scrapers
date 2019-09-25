@@ -1,6 +1,7 @@
 class FakeResponse:
     def __init__(self, text="", status_code=200, headers=None):
         self.text = text
+        self.content = text.encode("utf-8")
         self.status_code = status_code
         self.headers = headers or {}
 
